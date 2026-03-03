@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Aurora Advisors - Dashboard de Inversiones</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary-bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --accent-color: #2563eb;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+
+        body { background-color: var(--primary-bg); font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--text-main); }
+
+        #login-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-card {
+            background: #fff; border-radius: 16px; padding: 2.5rem;
+            width: 100%; max-width: 380px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .login-subtitle { font-size: 0.85rem; color: #6b7280; margin-bottom: 1.75rem; }
+        .login-input {
+            width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e5e7eb;
+            border-radius: 8px; font-size: 1rem; outline: none;
+            transition: border-color 0.2s; text-align: center; letter-spacing: 2px;
+        }
+        .login-input:focus { border-color: #2563eb; }
+        .login-input.error { border-color: #ef4444; animation: shake 0.3s; }
+        .login-btn {
+            width: 100%; margin-top: 1rem; padding: 0.75rem;
+            background: #2563eb; color: #fff; border: none;
+            border-radius: 8px; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .login-btn:hover { background: #1d4ed8; }
+        .login-error { color: #ef4444; font-size: 0.82rem; margin-top: 0.6rem; min-height: 1.1rem; }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        #dashboard { display: none; }
+
+        .header { background: #131c2e; padding: 1.25rem 1.5rem; border-bottom: 1px solid #1e2d45; margin-bottom: 2rem; }
+        .brand-title { font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+            height: 100%;
+            transition: transform 0.2s;
+        }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        .kpi-label { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 2.25rem; font-weight: 700; color: #111827; margin: 0.5rem 0; }
+        .kpi-value-sm { font-size: 1.6rem; font-weight: 700; color: #111827; margin: 0.5rem 0; }
+        .kpi-sub { font-size: 0.875rem; font-weight: 500; }
+        .text-up { color: var(--success-color); }
+        .text-down { color: var(--danger-color); }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+            margin-bottom: 1.5rem;
+        }
+        .chart-header { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #374151; }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .custom-file-upload:hover { background-color: #1d4ed8; }
+
+        .table-container { max-height: 400px; overflow-y: auto; }
+        .table thead th { position: sticky; top: 0; background: #fff; z-index: 1; }
+
+        .rank-table { font-size: 0.85rem; }
+        .rank-table td, .rank-table th { padding: 0.35rem 0.5rem; }
+        .rank-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- PANTALLA DE LOGIN -->
+<div id="login-screen">
+    <div class="login-card">
+        <img src="AA%20completo%20-%20telegram.png" alt="Aurora Advisors" style="width:200px; border-radius:10px; margin-bottom:1rem;">
+        <div class="login-subtitle">Reporte Bimestral · Marzo 2026</div>
+        <input type="password" id="password-input" class="login-input" placeholder="Contraseña"
+               onkeydown="if(event.key==='Enter') checkPassword()">
+        <button class="login-btn" onclick="checkPassword()">
+            <i class="fas fa-unlock me-2"></i>Ingresar
+        </button>
+        <div class="login-error" id="login-error"></div>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+<div class="header d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+        <img src="AA%20completo%20-%20telegram.png" alt="Aurora Advisors" style="height:52px; border-radius:8px;">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <p class="m-0 small" style="color:#94a3b8;">Análisis de Rendimiento Compuesto (CAGR)</p>
+                <span class="badge" style="background:rgba(99,102,241,0.2); color:#a5b4fc; font-size:0.78rem; font-weight:600;">
+                    <i class="fas fa-calendar-alt me-1"></i>Reporte Bimestral · Marzo 2026
+                </span>
+            </div>
+        </div>
+    </div>
+    <div>
+        <label for="excelFile" class="custom-file-upload">
+            <i class="fas fa-upload me-2"></i>Cargar Excel (.xlsx)
+        </label>
+        <input type="file" id="excelFile" accept=".xlsx, .xls" style="display:none" onchange="processUpload()">
+        <button onclick="loadDemoData()" class="btn btn-outline-secondary btn-sm ms-2">Ver Demo</button>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+
+    <!-- KPI ROW 1: métricas principales -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-primary">
+                <div class="kpi-label">Rendimiento Promedio (Media)</div>
+                <div class="kpi-value" id="val-mean">--</div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Mediana: <span id="val-median" class="fw-bold">--</span></span>
+                    <span class="badge bg-primary bg-opacity-10 text-primary">Objetivo: >10%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-success">
+                <div class="kpi-label">Alpha Generado</div>
+                <div class="kpi-value text-success" id="val-alpha">--</div>
+                <div class="kpi-sub text-muted">vs Objetivo (10%)</div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-warning">
+                <div class="kpi-label">Volatilidad (Riesgo)</div>
+                <div class="kpi-value" id="val-volatility">--</div>
+                <div class="kpi-sub text-muted">Desviación Estándar</div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-info">
+                <div class="kpi-label">% sobre Objetivo (>10%)</div>
+                <div class="kpi-value" id="val-success">--</div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small"><span id="val-success-count">--</span> clientes</span>
+                    <i class="fas fa-bullseye text-info opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI ROW 2: percentiles -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-secondary">
+                <div class="kpi-label">Percentil 25 (P25)</div>
+                <div class="kpi-value-sm" id="val-p25">--</div>
+                <div class="kpi-sub text-muted">El 25% de clientes está por debajo</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-secondary">
+                <div class="kpi-label">Percentil 75 (P75)</div>
+                <div class="kpi-value-sm" id="val-p75">--</div>
+                <div class="kpi-sub text-muted">El 75% de clientes está por debajo</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-secondary">
+                <div class="kpi-label">Percentil 90 (P90)</div>
+                <div class="kpi-value-sm" id="val-p90">--</div>
+                <div class="kpi-sub text-muted">Sólo el 10% supera este nivel</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="kpi-card border-start border-4 border-danger">
+                <div class="kpi-label">Win Rate (CAGR &gt; 0%)</div>
+                <div class="kpi-value-sm" id="val-winrate">--</div>
+                <div class="kpi-sub text-muted"><span id="val-winrate-count">--</span> clientes positivos</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="chart-header">
+                    Rendimiento Individual por Cliente
+                    <small class="text-muted fw-normal ms-2">(Barras rojas indican CAGR negativo)</small>
+                </div>
+                <div id="chart-individual" style="height: 400px;"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">Distribución de Frecuencias</div>
+                <div id="chart-histogram" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARTS ROW 2 -->
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">Análisis de Riesgo (Boxplot)</div>
+                <div id="chart-boxplot" style="height: 280px;"></div>
+                <div class="mt-3 small text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    La caja central representa al 50% de tus clientes. Los puntos externos son outliers.
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">Segmentación por Rango de CAGR</div>
+                <div id="chart-segmentacion" style="height: 280px;"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card" style="height: calc(100% - 1.5rem);">
+                <div class="chart-header">Top 5 & Bottom 5</div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-success fw-bold small mb-2"><i class="fas fa-trophy me-1"></i>Mejores</div>
+                        <table class="table table-sm rank-table mb-0">
+                            <tbody id="top5-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-danger fw-bold small mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Peores</div>
+                        <table class="table table-sm rank-table mb-0">
+                            <tbody id="bottom5-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DETALLE -->
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-header d-flex justify-content-between">
+                    <span>Detalle de Cartera</span>
+                    <span class="badge bg-secondary" id="total-records">0 Clientes</span>
+                </div>
+                <div class="table-container">
+                    <table class="table table-hover table-sm" id="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID Cliente</th>
+                                <th>CAGR</th>
+                                <th>vs Objetivo</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</div> <!-- /dashboard -->
+
+<script>
+    function checkPassword() {
+        const input = document.getElementById('password-input');
+        const error = document.getElementById('login-error');
+        if (input.value === 'Aurora2026') {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+        } else {
+            error.textContent = 'Contraseña incorrecta. Intentá de nuevo.';
+            input.classList.add('error');
+            input.value = '';
+            setTimeout(() => input.classList.remove('error'), 400);
+        }
+    }
+
+    const BENCHMARK = 0.10;
+
+    // DATOS (Resultados.xlsx - 220 clientes)
+    const demoData = [{"Cliente":11998,"CAGR":0.3833},{"Cliente":12190,"CAGR":0.1354},{"Cliente":12196,"CAGR":0.2809},{"Cliente":12215,"CAGR":0.2357},{"Cliente":20060,"CAGR":0.1545},{"Cliente":33096,"CAGR":0.1357},{"Cliente":36316,"CAGR":0.195},{"Cliente":34467,"CAGR":0.1914},{"Cliente":34469,"CAGR":0.1956},{"Cliente":34543,"CAGR":0.2762},{"Cliente":34549,"CAGR":0.1687},{"Cliente":34551,"CAGR":0.227},{"Cliente":34559,"CAGR":0.0964},{"Cliente":34560,"CAGR":0.3279},{"Cliente":34605,"CAGR":0.2214},{"Cliente":34589,"CAGR":0.2197},{"Cliente":34641,"CAGR":0.0411},{"Cliente":34650,"CAGR":0.6121},{"Cliente":34664,"CAGR":0.2038},{"Cliente":35139,"CAGR":0.2036},{"Cliente":35160,"CAGR":0.1307},{"Cliente":35250,"CAGR":0.2502},{"Cliente":35254,"CAGR":0.2162},{"Cliente":35457,"CAGR":1.0481},{"Cliente":35498,"CAGR":0.1323},{"Cliente":35506,"CAGR":0.1749},{"Cliente":35577,"CAGR":0.1953},{"Cliente":35649,"CAGR":0.0924},{"Cliente":35655,"CAGR":0.1091},{"Cliente":35620,"CAGR":0.2406},{"Cliente":35849,"CAGR":0.0987},{"Cliente":35887,"CAGR":0.0731},{"Cliente":35907,"CAGR":0.1472},{"Cliente":35955,"CAGR":0.3149},{"Cliente":35967,"CAGR":0.2842},{"Cliente":35975,"CAGR":0.2867},{"Cliente":35988,"CAGR":-0.0972},{"Cliente":35987,"CAGR":0.3031},{"Cliente":35989,"CAGR":0.126},{"Cliente":35998,"CAGR":0.1776},{"Cliente":36006,"CAGR":0.2893},{"Cliente":36008,"CAGR":0.261},{"Cliente":36024,"CAGR":-0.1334},{"Cliente":36043,"CAGR":0.6868},{"Cliente":36054,"CAGR":0.0709},{"Cliente":36073,"CAGR":0.1853},{"Cliente":36081,"CAGR":0.2175},{"Cliente":36084,"CAGR":0.2837},{"Cliente":36087,"CAGR":0.1608},{"Cliente":36102,"CAGR":0.2449},{"Cliente":36107,"CAGR":0.3046},{"Cliente":36112,"CAGR":0.0887},{"Cliente":36115,"CAGR":0.3558},{"Cliente":36116,"CAGR":0.2563},{"Cliente":36122,"CAGR":0.2504},{"Cliente":36128,"CAGR":0.2702},{"Cliente":36133,"CAGR":0.0208},{"Cliente":36134,"CAGR":0.3163},{"Cliente":36140,"CAGR":0.2543},{"Cliente":36143,"CAGR":0.1801},{"Cliente":36149,"CAGR":0.1621},{"Cliente":36151,"CAGR":0.2265},{"Cliente":36161,"CAGR":0.1843},{"Cliente":36165,"CAGR":0.2888},{"Cliente":36169,"CAGR":0.2406},{"Cliente":36171,"CAGR":0.2154},{"Cliente":36176,"CAGR":0.3173},{"Cliente":36178,"CAGR":0.0884},{"Cliente":36182,"CAGR":0.3312},{"Cliente":36184,"CAGR":0.2765},{"Cliente":36192,"CAGR":0.1992},{"Cliente":36201,"CAGR":0.3093},{"Cliente":36205,"CAGR":0.1719},{"Cliente":36215,"CAGR":0.1916},{"Cliente":36219,"CAGR":0.2211},{"Cliente":36221,"CAGR":0.1784},{"Cliente":36229,"CAGR":0.1563},{"Cliente":36233,"CAGR":0.0387},{"Cliente":36237,"CAGR":0.2151},{"Cliente":36241,"CAGR":0.1463},{"Cliente":36248,"CAGR":0.3632},{"Cliente":36270,"CAGR":0.1984},{"Cliente":36272,"CAGR":0.2172},{"Cliente":36278,"CAGR":0.1906},{"Cliente":36291,"CAGR":0.2895},{"Cliente":36297,"CAGR":0.2212},{"Cliente":36298,"CAGR":0.235},{"Cliente":36303,"CAGR":0.1543},{"Cliente":36306,"CAGR":0.179},{"Cliente":36315,"CAGR":0.061},{"Cliente":36319,"CAGR":0.1889},{"Cliente":36328,"CAGR":0.1859},{"Cliente":36343,"CAGR":0.1873},{"Cliente":36357,"CAGR":0.4981},{"Cliente":36359,"CAGR":0.3158},{"Cliente":36362,"CAGR":0.0181},{"Cliente":36372,"CAGR":0.1084},{"Cliente":36373,"CAGR":0.1915},{"Cliente":36380,"CAGR":0.0962},{"Cliente":36404,"CAGR":0.0234},{"Cliente":36418,"CAGR":0.1653},{"Cliente":36432,"CAGR":0.4073},{"Cliente":36433,"CAGR":0.2814},{"Cliente":36478,"CAGR":0.2726},{"Cliente":36479,"CAGR":0.2151},{"Cliente":36500,"CAGR":0.2247},{"Cliente":36507,"CAGR":1.1066},{"Cliente":36536,"CAGR":0.1057},{"Cliente":36543,"CAGR":0.1773},{"Cliente":36544,"CAGR":0.1856},{"Cliente":36557,"CAGR":0.162},{"Cliente":36559,"CAGR":0.2169},{"Cliente":36593,"CAGR":0.2359},{"Cliente":36606,"CAGR":0.2167},{"Cliente":36607,"CAGR":0.4897},{"Cliente":36628,"CAGR":0.1321},{"Cliente":36641,"CAGR":0.0913},{"Cliente":36644,"CAGR":0.2331},{"Cliente":36656,"CAGR":0.7434},{"Cliente":36666,"CAGR":0.2489},{"Cliente":36670,"CAGR":0.1762},{"Cliente":36676,"CAGR":0.1867},{"Cliente":36678,"CAGR":0.1763},{"Cliente":36686,"CAGR":0.1711},{"Cliente":36690,"CAGR":0.3521},{"Cliente":36700,"CAGR":0.1553},{"Cliente":36708,"CAGR":0.1508},{"Cliente":36709,"CAGR":0.1701},{"Cliente":36721,"CAGR":0.1874},{"Cliente":36732,"CAGR":0.096},{"Cliente":36737,"CAGR":0.2689},{"Cliente":36738,"CAGR":0.3002},{"Cliente":36746,"CAGR":0.171},{"Cliente":36753,"CAGR":0.0043},{"Cliente":36766,"CAGR":0.2694},{"Cliente":36769,"CAGR":0.0976},{"Cliente":36774,"CAGR":0.1957},{"Cliente":36775,"CAGR":0.4377},{"Cliente":36777,"CAGR":0.0688},{"Cliente":36793,"CAGR":0.2783},{"Cliente":36796,"CAGR":0.2813},{"Cliente":36797,"CAGR":0.2571},{"Cliente":36807,"CAGR":0.0515},{"Cliente":36816,"CAGR":0.1867},{"Cliente":36831,"CAGR":0.0664},{"Cliente":36833,"CAGR":0.0483},{"Cliente":36835,"CAGR":0.1376},{"Cliente":36852,"CAGR":0.4301},{"Cliente":36854,"CAGR":-0.11},{"Cliente":36855,"CAGR":-0.0007},{"Cliente":36858,"CAGR":-0.034},{"Cliente":36860,"CAGR":-0.034},{"Cliente":36875,"CAGR":0.0816},{"Cliente":36886,"CAGR":0.246},{"Cliente":36899,"CAGR":0.2065},{"Cliente":36913,"CAGR":0.0815},{"Cliente":36917,"CAGR":0.2277},{"Cliente":36921,"CAGR":0.2937},{"Cliente":36933,"CAGR":0.1904},{"Cliente":36937,"CAGR":0.3974},{"Cliente":36948,"CAGR":0.2491},{"Cliente":36977,"CAGR":0.1781},{"Cliente":36979,"CAGR":-0.0515},{"Cliente":36995,"CAGR":0.3095},{"Cliente":37026,"CAGR":0.1489},{"Cliente":37029,"CAGR":0.2213},{"Cliente":37039,"CAGR":0.1665},{"Cliente":37040,"CAGR":0.3246},{"Cliente":37042,"CAGR":0.1916},{"Cliente":37045,"CAGR":0.0964},{"Cliente":37053,"CAGR":0.2592},{"Cliente":37054,"CAGR":0.1619},{"Cliente":37068,"CAGR":0.0979},{"Cliente":37083,"CAGR":0.1897},{"Cliente":37086,"CAGR":0.186},{"Cliente":37099,"CAGR":0.4818},{"Cliente":37139,"CAGR":0.4742},{"Cliente":37144,"CAGR":0.5092},{"Cliente":361028,"CAGR":0.2431},{"Cliente":361032,"CAGR":0.2245},{"Cliente":361033,"CAGR":0.2727},{"Cliente":361034,"CAGR":0.1642},{"Cliente":361044,"CAGR":0.1041},{"Cliente":361045,"CAGR":0.0},{"Cliente":361050,"CAGR":0.331},{"Cliente":361052,"CAGR":0.1004},{"Cliente":361053,"CAGR":0.1004},{"Cliente":361054,"CAGR":0.485},{"Cliente":361058,"CAGR":0.2774},{"Cliente":361094,"CAGR":0.0514},{"Cliente":361095,"CAGR":-0.22},{"Cliente":361102,"CAGR":0.2353},{"Cliente":361105,"CAGR":0.2504},{"Cliente":361109,"CAGR":0.1923},{"Cliente":361110,"CAGR":0.3937},{"Cliente":361112,"CAGR":0.3604},{"Cliente":361119,"CAGR":0.2011},{"Cliente":361122,"CAGR":0.2278},{"Cliente":361132,"CAGR":0.2647},{"Cliente":361135,"CAGR":0.4633},{"Cliente":361136,"CAGR":0.3628},{"Cliente":361143,"CAGR":0.3346},{"Cliente":361148,"CAGR":0.1429},{"Cliente":361150,"CAGR":0.3336},{"Cliente":361154,"CAGR":0.5091},{"Cliente":361158,"CAGR":0.2124},{"Cliente":361167,"CAGR":0.4074},{"Cliente":361168,"CAGR":0.4966},{"Cliente":361185,"CAGR":0.3642},{"Cliente":361192,"CAGR":0.0278},{"Cliente":361194,"CAGR":-0.1917},{"Cliente":361196,"CAGR":0.5471},{"Cliente":361206,"CAGR":-0.0311},{"Cliente":361235,"CAGR":0.4263},{"Cliente":361242,"CAGR":-0.1884},{"Cliente":361250,"CAGR":0.1074},{"Cliente":361254,"CAGR":0.095},{"Cliente":361262,"CAGR":-0.11},{"Cliente":361269,"CAGR":-0.0708},{"Cliente":34642,"CAGR":0.0942}];
+
+    window.onload = function() { processData(demoData); };
+    function loadDemoData() { processData(demoData); }
+
+    function processUpload() {
+        const fileInput = document.getElementById('excelFile');
+        const file = fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            let jsonData = XLSX.utils.sheet_to_json(worksheet);
+            if (jsonData.length > 0) {
+                const firstKeys = Object.keys(jsonData[0]);
+                if (!isNaN(parseFloat(firstKeys[0]))) {
+                    const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    jsonData = rows
+                        .filter(r => r.length >= 2 && r[0] != null && r[1] != null)
+                        .map(r => ({ Cliente: r[0], CAGR: r[1] }));
+                }
+            }
+            processData(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function maskId(id) {
+        const s = String(id);
+        return '**' + s.slice(-2);
+    }
+
+    function percentile(sorted, p) {
+        const idx = (p / 100) * (sorted.length - 1);
+        const lo = Math.floor(idx), hi = Math.ceil(idx);
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+    }
+
+    function processData(rawData) {
+        if (!rawData || rawData.length === 0) return;
+
+        const data = rawData.map(row => {
+            const keys = Object.keys(row);
+            let client, cagr;
+            keys.forEach(k => {
+                if (k.toLowerCase().includes('client')) client = row[k];
+                if (k.toLowerCase().includes('cagr')) cagr = parseFloat(row[k]);
+            });
+            return { Cliente: client, CAGR: cagr };
+        }).filter(item => item.CAGR !== undefined && !isNaN(item.CAGR));
+
+        const cagrs = data.map(d => d.CAGR);
+        const clients = data.map(d => d.Cliente);
+        const total = cagrs.length;
+        const sortedCagrs = [...cagrs].sort((a, b) => a - b);
+
+        // Estadísticas base
+        const mean = cagrs.reduce((a, b) => a + b, 0) / total;
+        const mid = Math.floor(total / 2);
+        const median = total % 2 !== 0 ? sortedCagrs[mid] : (sortedCagrs[mid - 1] + sortedCagrs[mid]) / 2;
+        const variance = cagrs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / total;
+        const stdDev = Math.sqrt(variance);
+        const alpha = mean - BENCHMARK;
+
+        // Percentiles
+        const p25 = percentile(sortedCagrs, 25);
+        const p75 = percentile(sortedCagrs, 75);
+        const p90 = percentile(sortedCagrs, 90);
+
+        // Sobre/bajo objetivo
+        const aboveCount = cagrs.filter(v => v >= BENCHMARK).length;
+        const belowCount = total - aboveCount;
+        const successRatio = (aboveCount / total) * 100;
+        const belowRatio = (belowCount / total) * 100;
+
+        // Win Rate (CAGR > 0)
+        const winCount = cagrs.filter(v => v > 0).length;
+        const winRate = (winCount / total) * 100;
+
+        // --- DOM KPI ROW 1 ---
+        document.getElementById('val-mean').innerText = (mean * 100).toFixed(2) + '%';
+        document.getElementById('val-median').innerText = (median * 100).toFixed(2) + '%';
+        document.getElementById('val-volatility').innerText = (stdDev * 100).toFixed(2) + '%';
+        const alphaEl = document.getElementById('val-alpha');
+        alphaEl.innerText = (alpha > 0 ? '+' : '') + (alpha * 100).toFixed(2) + '%';
+        alphaEl.className = alpha >= 0 ? 'kpi-value text-success' : 'kpi-value text-danger';
+        document.getElementById('val-success').innerText = successRatio.toFixed(1) + '%';
+        document.getElementById('val-success-count').innerText = aboveCount;
+        document.getElementById('total-records').innerText = total + " Clientes";
+
+        // --- DOM KPI ROW 2 ---
+        document.getElementById('val-p25').innerText = (p25 * 100).toFixed(2) + '%';
+        document.getElementById('val-p75').innerText = (p75 * 100).toFixed(2) + '%';
+        document.getElementById('val-p90').innerText = (p90 * 100).toFixed(2) + '%';
+        const winEl = document.getElementById('val-winrate');
+        winEl.innerText = winRate.toFixed(1) + '%';
+        winEl.className = winRate >= 90 ? 'kpi-value-sm text-success' : winRate >= 70 ? 'kpi-value-sm text-warning' : 'kpi-value-sm text-danger';
+        document.getElementById('val-winrate-count').innerText = winCount;
+
+        // --- TOP 5 / BOTTOM 5 ---
+        const sorted = [...data].sort((a, b) => b.CAGR - a.CAGR);
+        const top5 = sorted.slice(0, 5);
+        const bottom5 = sorted.slice(-5).reverse();
+
+        const top5Body = document.getElementById('top5-body');
+        top5Body.innerHTML = '';
+        top5.forEach((r, i) => {
+            top5Body.innerHTML += `<tr>
+                <td><span class="rank-badge bg-success bg-opacity-10 text-success">#${i+1}</span></td>
+                <td class="text-muted">${maskId(r.Cliente)}</td>
+                <td class="text-success fw-bold">${(r.CAGR*100).toFixed(1)}%</td>
+            </tr>`;
+        });
+
+        const bottom5Body = document.getElementById('bottom5-body');
+        bottom5Body.innerHTML = '';
+        bottom5.forEach((r, i) => {
+            const cls = r.CAGR < 0 ? 'text-danger' : 'text-warning';
+            bottom5Body.innerHTML += `<tr>
+                <td><span class="rank-badge bg-danger bg-opacity-10 text-danger">#${i+1}</span></td>
+                <td class="text-muted">${maskId(r.Cliente)}</td>
+                <td class="${cls} fw-bold">${(r.CAGR*100).toFixed(1)}%</td>
+            </tr>`;
+        });
+
+        // --- TABLA DETALLE ---
+        const tableBody = document.querySelector('#data-table tbody');
+        tableBody.innerHTML = '';
+        data.forEach(row => {
+            const val = (row.CAGR * 100).toFixed(2) + '%';
+            const diff = ((row.CAGR - BENCHMARK) * 100).toFixed(2);
+            const diffStr = (diff > 0 ? '+' : '') + diff + '%';
+            const statusClass = row.CAGR >= BENCHMARK ? 'text-success' : (row.CAGR >= 0 ? 'text-warning' : 'text-danger fw-bold');
+            const diffClass = row.CAGR >= BENCHMARK ? 'text-success' : 'text-danger';
+            const icon = row.CAGR >= BENCHMARK ? '<i class="fas fa-check-circle text-success small"></i>'
+                       : row.CAGR >= 0 ? '<i class="fas fa-minus-circle text-warning small"></i>'
+                       : '<i class="fas fa-times-circle text-danger small"></i>';
+            tableBody.innerHTML += `<tr>
+                <td>#${maskId(row.Cliente)}</td>
+                <td class="${statusClass}">${val}</td>
+                <td class="${diffClass} small">${diffStr}</td>
+                <td>${icon}</td>
+            </tr>`;
+        });
+
+        // --- GRÁFICOS ---
+        const config = {responsive: true, displayModeBar: false};
+        const transparent = {paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)'};
+
+        // 1. Bar chart individual
+        const maskedClients = clients.map(c => maskId(c));
+        Plotly.newPlot('chart-individual', [{
+            x: maskedClients, y: cagrs, type: 'bar',
+            marker: { color: cagrs.map(v => v < 0 ? '#ef4444' : v < BENCHMARK ? '#f59e0b' : '#2563eb'), opacity: 0.8 },
+            hovertemplate: '<b>Cliente %{x}</b><br>CAGR: %{y:.2%}<extra></extra>'
+        }], {
+            margin: {t: 10, b: 30, l: 50, r: 10},
+            yaxis: {tickformat: '.0%'},
+            xaxis: {showticklabels: false},
+            shapes: [{ type: 'line', x0: 0, x1: 1, xref: 'paper', y0: BENCHMARK, y1: BENCHMARK,
+                line: { color: '#ef4444', width: 1.5, dash: 'dot' } }],
+            ...transparent
+        }, config);
+
+        // 2. Histograma
+        Plotly.newPlot('chart-histogram', [{
+            x: cagrs, type: 'histogram',
+            marker: { color: '#10b981', line: { color: 'white', width: 1 } },
+            xbins: { size: 0.05 },
+            hovertemplate: 'Rango: %{x:.0%}<br>Clientes: %{y}<extra></extra>'
+        }], {
+            margin: {t: 10, b: 30, l: 40, r: 10},
+            xaxis: {tickformat: '.0%', title: 'CAGR'},
+            yaxis: {title: 'Frecuencia'},
+            shapes: [{ type: 'line', x0: BENCHMARK, x1: BENCHMARK, yref: 'paper', y0: 0, y1: 1,
+                line: { color: '#ef4444', width: 1.5, dash: 'dot' } }],
+            ...transparent
+        }, config);
+
+        // 3. Boxplot
+        Plotly.newPlot('chart-boxplot', [{
+            x: cagrs, type: 'box', boxpoints: 'all', jitter: 0.3, pointpos: -1.8,
+            marker: { color: '#6366f1' }, name: 'Cartera', orientation: 'h'
+        }], {
+            margin: {t: 10, b: 30, l: 30, r: 10},
+            xaxis: {tickformat: '.0%'},
+            ...transparent
+        }, config);
+
+        // 4. Segmentación por rangos (donut)
+        const buckets = [
+            { label: '< 0%',     count: cagrs.filter(v => v < 0).length,                       color: '#ef4444' },
+            { label: '0 – 10%',  count: cagrs.filter(v => v >= 0 && v < 0.10).length,          color: '#f59e0b' },
+            { label: '10 – 25%', count: cagrs.filter(v => v >= 0.10 && v < 0.25).length,       color: '#10b981' },
+            { label: '25 – 50%', count: cagrs.filter(v => v >= 0.25 && v < 0.50).length,       color: '#2563eb' },
+            { label: '> 50%',    count: cagrs.filter(v => v >= 0.50).length,                   color: '#7c3aed' },
+        ];
+        Plotly.newPlot('chart-segmentacion', [{
+            labels: buckets.map(b => `${b.label} (${b.count})`),
+            values: buckets.map(b => b.count),
+            type: 'pie', hole: 0.5,
+            marker: { colors: buckets.map(b => b.color) },
+            textinfo: 'percent',
+            hovertemplate: '<b>%{label}</b><br>%{percent}<extra></extra>'
+        }], {
+            margin: {t: 10, b: 10, l: 10, r: 10},
+            legend: { orientation: 'v', font: { size: 11 } },
+            ...transparent
+        }, config);
+    }
+</script>
+
+</body>
+</html>
