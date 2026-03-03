@@ -86,6 +86,7 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             border: 1px solid #f0f0f0;
             margin-bottom: 1.5rem;
+            overflow: hidden;
         }
         .chart-header { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #374151; }
 
@@ -257,7 +258,8 @@
         <div class="col-lg-4">
             <div class="chart-card">
                 <div class="chart-header">Segmentación por Rango de CAGR</div>
-                <div id="chart-segmentacion" style="height: 280px;"></div>
+                <div id="chart-segmentacion" style="height: 200px;"></div>
+                <div id="segmentacion-legend" class="d-flex flex-wrap justify-content-center gap-2 mt-2"></div>
             </div>
         </div>
         <div class="col-lg-4">
@@ -535,19 +537,27 @@
             { label: '> 50%',    count: cagrs.filter(v => v >= 0.50).length,                   color: '#7c3aed' },
         ];
         Plotly.newPlot('chart-segmentacion', [{
-            labels: buckets.map(b => `${b.label} (${b.count})`),
+            labels: buckets.map(b => b.label),
             values: buckets.map(b => b.count),
             type: 'pie', hole: 0.45,
-            domain: { x: [0, 0.5], y: [0, 1] },
             marker: { colors: buckets.map(b => b.color) },
             textinfo: 'percent',
             textposition: 'inside',
             hovertemplate: '<b>%{label}</b><br>%{value} clientes (%{percent})<extra></extra>'
         }], {
-            margin: {t: 10, b: 10, l: 10, r: 10},
-            legend: { orientation: 'v', x: 0.55, y: 0.5, yanchor: 'middle', font: { size: 11 } },
+            margin: {t: 5, b: 5, l: 5, r: 5},
+            showlegend: false,
             ...transparent
         }, config);
+
+        // Leyenda HTML propia
+        const legendEl = document.getElementById('segmentacion-legend');
+        legendEl.innerHTML = buckets.map(b =>
+            `<span class="d-flex align-items-center" style="font-size:0.75rem;">
+                <span style="width:10px;height:10px;border-radius:2px;background:${b.color};display:inline-block;margin-right:4px;"></span>
+                ${b.label} (${b.count})
+            </span>`
+        ).join('');
     }
 </script>
 
