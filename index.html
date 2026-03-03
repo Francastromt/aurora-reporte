@@ -510,11 +510,17 @@
 
         // 3. Boxplot
         Plotly.newPlot('chart-boxplot', [{
-            x: cagrs, type: 'box', boxpoints: 'all', jitter: 0.3, pointpos: -1.8,
-            marker: { color: '#6366f1', size: 4 }, name: 'Cartera', orientation: 'h'
+            x: cagrs, type: 'box', boxpoints: 'outliers',
+            marker: { color: '#6366f1', size: 5 },
+            line: { color: '#6366f1' },
+            fillcolor: 'rgba(99,102,241,0.2)',
+            name: '', orientation: 'h',
+            hoverinfo: 'x'
         }], {
-            margin: {t: 10, b: 30, l: 30, r: 10},
-            xaxis: { tickformat: '.0%', range: [-0.30, 0.80] },
+            margin: {t: 10, b: 30, l: 10, r: 10},
+            xaxis: { tickformat: '.0%', range: [-0.30, 0.80], zeroline: true, zerolinecolor: '#e5e7eb' },
+            yaxis: { showticklabels: false },
+            showlegend: false,
             ...transparent
         }, config);
 
