@@ -510,18 +510,16 @@
             ...transparent
         }, config);
 
-        // 3. Boxplot — excluir outliers extremos para no distorsionar la escala
+        // 3. Boxplot — sin puntos, sin hover en la caja (evita labels flotantes desbordando)
         const cagrsCapped = cagrs.filter(v => v <= 0.80);
         Plotly.newPlot('chart-boxplot', [{
-            x: cagrsCapped, type: 'box', boxpoints: 'all',
-            jitter: 0.4, pointpos: 0,
-            marker: { color: '#6366f1', size: 3, opacity: 0.5 },
+            x: cagrsCapped, type: 'box', boxpoints: false,
             line: { color: '#4f46e5' },
-            fillcolor: 'rgba(99,102,241,0.15)',
+            fillcolor: 'rgba(99,102,241,0.25)',
             name: '', orientation: 'h',
-            hovertemplate: '%{x:.1%}<extra></extra>'
+            hoverinfo: 'none'
         }], {
-            margin: {t: 10, b: 30, l: 10, r: 10},
+            margin: {t: 20, b: 30, l: 10, r: 20},
             xaxis: { tickformat: '.0%', zeroline: true, zerolinecolor: '#e5e7eb' },
             yaxis: { showticklabels: false },
             showlegend: false,
