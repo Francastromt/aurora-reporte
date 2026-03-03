@@ -508,17 +508,19 @@
             ...transparent
         }, config);
 
-        // 3. Boxplot
+        // 3. Boxplot — excluir outliers extremos para no distorsionar la escala
+        const cagrsCapped = cagrs.filter(v => v <= 0.80);
         Plotly.newPlot('chart-boxplot', [{
-            x: cagrs, type: 'box', boxpoints: 'outliers',
-            marker: { color: '#6366f1', size: 5 },
-            line: { color: '#6366f1' },
-            fillcolor: 'rgba(99,102,241,0.2)',
+            x: cagrsCapped, type: 'box', boxpoints: 'all',
+            jitter: 0.4, pointpos: 0,
+            marker: { color: '#6366f1', size: 3, opacity: 0.5 },
+            line: { color: '#4f46e5' },
+            fillcolor: 'rgba(99,102,241,0.15)',
             name: '', orientation: 'h',
-            hoverinfo: 'x'
+            hovertemplate: '%{x:.1%}<extra></extra>'
         }], {
             margin: {t: 10, b: 30, l: 10, r: 10},
-            xaxis: { tickformat: '.0%', range: [-0.30, 0.80], zeroline: true, zerolinecolor: '#e5e7eb' },
+            xaxis: { tickformat: '.0%', zeroline: true, zerolinecolor: '#e5e7eb' },
             yaxis: { showticklabels: false },
             showlegend: false,
             ...transparent
@@ -535,13 +537,15 @@
         Plotly.newPlot('chart-segmentacion', [{
             labels: buckets.map(b => `${b.label} (${b.count})`),
             values: buckets.map(b => b.count),
-            type: 'pie', hole: 0.5,
+            type: 'pie', hole: 0.45,
+            domain: { x: [0, 0.5], y: [0, 1] },
             marker: { colors: buckets.map(b => b.color) },
             textinfo: 'percent',
-            hovertemplate: '<b>%{label}</b><br>%{percent}<extra></extra>'
+            textposition: 'inside',
+            hovertemplate: '<b>%{label}</b><br>%{value} clientes (%{percent})<extra></extra>'
         }], {
             margin: {t: 10, b: 10, l: 10, r: 10},
-            legend: { orientation: 'v', font: { size: 11 } },
+            legend: { orientation: 'v', x: 0.55, y: 0.5, yanchor: 'middle', font: { size: 11 } },
             ...transparent
         }, config);
     }
